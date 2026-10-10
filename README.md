@@ -1,2 +1,127 @@
-# Voice-Assisted-Payment-System
-A prototype Android app that lets older adults make UPI payments by voice instead of navigating through contacts, amounts, and menus. Speech is transcribed to text, an LLM interprets the request and calls an MCP server to resolve the contact's UPI ID and build the payment, then hands off to the user
+# Voice-Assisted UPI Payment
+
+A prototype Android app that lets users make UPI payments by voice — aimed at elderly users who find it hard to open a payment app, find the right contact, and enter an amount. The user speaks ("Pay 500 rupees to Ramesh"), the app understands it, reads the payment back for confirmation, and hands off to their UPI app (GPay / PhonePe / etc.) where they enter their PIN as usual.
+
+> **Prototype scope.** This is a demo build, not a production payment app. It uses UPI deep-link intents and does not move money itself. Security hardening, certification, and robustness items are tracked in the post-demo backlog.
+
+---
+
+## How it works
+
+```
+ APP                          BACKEND                         PROVIDERS
+  |  audio ───────────────────►  |                               |
+  |                              |── audio ──► STT ──► text ──────|
+  |                              |── text ───► LLM ──► {payee,amt}─|
+  |                              |── reply ──► TTS ──► audio ──────|
+  |  ◄──── {status, speech, ──── |                               |
+  |         tts_audio, payment}  |                               |
+  |  confirm screen → fire UPI intent → UPI app → user enters PIN |
+```
+
+**Pipeline:** audio → **STT** (speech-to-text) → **LLM** extracts `{payee, amount}` → reply text → **TTS** (text-to-speech) → audio played to the user.
+
+**Key principle:** the app only ever talks to the backend. STT, the LLM, and TTS are all called *from the backend* — never directly from the app — so API keys stay server-side.
+
+---
+
+## Architecture decisions
+
+- **Native Android** (Kotlin + Jetpack Compose).
+- **One backend** holding STT, the LLM, TTS, and payment-helper functions. No microservices.
+- **No MCP.** There is one action (pay). Contact resolution and UPI-link building are plain backend/app functions, not MCP tools. (MCP is parked for if the action set ever grows.)
+- **Add contact is a manual typed screen,** not a voice action — dictating a UPI ID by voice is unreliable.
+- **Confirmation is mandatory** before firing a payment: the app reads back "Pay ₹X to Y" and requires a Confirm tap.
+- **Contacts (name → UPI ID) are stored locally on the device** (Room database), seeded with demo contacts. They are not held on the server.
+- **Payment is via UPI deep-link intent** (`upi://pay?pa=&pn=&am=&cu=INR`) launched with `startActivityForResult`. The user completes the PIN in their own UPI app. Result status comes back via the activity result (not fully reliable — acceptable for the prototype).
+
+---
+
+## Repository structure
+
+```
+.
+├── android-app/     # Native Android app (Kotlin, Jetpack Compose)
+├── backend/         # Backend: STT + LLM + TTS orchestration, /pay endpoint
+├── .gitignore
+└── README.md
+```
+
+---
+
+## Getting started
+
+### Prerequisites
+- **Android:** Android Studio (latest stable), a physical Android phone with USB debugging enabled (min SDK 24 / Android 7.0).
+- **Backend:** the chosen runtime (Node 20+ **or** Python 3.11+ — see `backend/`).
+- API keys for the STT, LLM, and TTS providers.
+
+### Android app
+```bash
+cd android-app
+# Open this folder in Android Studio, let Gradle sync, then Run on your device.
+```
+
+### Backend
+```bash
+cd backend
+# Install dependencies and copy the example env file:
+cp .env.example .env     # then fill in your API keys
+# Run the dev server (see backend/README for the exact command).
+```
+
+> **Local dev:** phone on USB with the backend on your laptop over the same Wi-Fi (cleartext config), or use ngrok to expose the backend. Deploy to Railway/Render before the demo.
+
+### Environment variables (backend `.env`)
+```
+STT_API_KEY=
+LLM_API_KEY=
+TTS_API_KEY=
+```
+**Never commit `.env`.** It is git-ignored.
+
+---
+
+## The `/pay` API contract
+
+The app sends audio; the backend replies with one envelope the app switches on:
+
+```jsonc
+{
+  "status": "confirm | need_info | contact_not_found | not_understood",
+  "speech": "text that was spoken",
+  "tts_audio": "<base64 audio of `speech`>",
+  "payment": {               // present only when status = confirm
+    "payee_name": "Ramesh",
+    "vpa": "ramesh@okaxis",
+    "amount": 500,
+    "upi_uri": "upi://pay?pa=ramesh@okaxis&pn=Ramesh&am=500&cu=INR"
+  }
+}
+```
+
+| status              | meaning                                  | app shows                         |
+|---------------------|------------------------------------------|-----------------------------------|
+| `confirm`           | understood, contact found, ready to pay  | confirmation screen → fire intent |
+| `need_info`         | payment understood, a field is missing   | listening again (asks for it)     |
+| `contact_not_found` | name parsed but not in contacts          | prompt to add the contact         |
+| `not_understood`    | STT/LLM couldn't parse the request       | error state, retry                |
+
+> **Open decision (settle before building A6/B7):** does name → UPI-ID resolution run **on the app** (contacts stay on device; backend returns only `{payee, amount}`) or **on the backend** (app sends names)? App-side resolution keeps UPI IDs off the server and is the current lean.
+
+---
+
+## Scope
+
+**In the demo (~71 pts, 20 days, 2 devs):** repo setup, design screens, voice capture + playback, STT + LLM parsing, contact store + manual add-contact, confirmation, UPI intent + result handling, deploy, rehearsed backup recording.
+
+**Post-demo backlog:** per-device auth tokens, rate limiting, provider spend caps, full error/edge states, UX polish pass, signed release APK, logging, HTTPS hardening — plus platform items (Play Integrity, NPCI/TPAP certification for true P2P, PSP SDK fallback, UPI Circle).
+
+---
+
+## Team
+
+- **Dev A — Android** (`android-app/`)
+- **Dev B — Backend** (`backend/`)
+
+Tickets are tracked on the GitHub Project board.
