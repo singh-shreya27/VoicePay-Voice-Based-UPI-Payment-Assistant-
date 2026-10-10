@@ -83,3 +83,6 @@ coverage/
 *.tmp
 *.bak
 tmp/
+
+# Node build output
+dist/
