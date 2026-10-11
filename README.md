@@ -74,6 +74,8 @@ cp .env.example .env     # then fill in your API keys
 
 ### Environment variables (backend `.env`)
 ```
+PORT=3000
+STT_URL=https://api.vachana.ai/stt/v3
 STT_API_KEY=
 LLM_API_KEY=
 TTS_API_KEY=
@@ -84,7 +86,21 @@ TTS_API_KEY=
 
 ## The `/pay` API contract
 
-The app sends audio; the backend replies with one envelope the app switches on:
+### Request: `POST /pay`
+
+```jsonc
+{
+  "audio": "<base64 WAV>",
+  "language_code": "hi-IN"
+}
+```
+
+- **`language_code`** is chosen by the user on first launch (stored on the device, changeable in settings) and sent with every request. The STT provider requires it and does not auto-detect. Allowed: `bn-IN`, `en-IN`, `gu-IN`, `hi-IN`, `kn-IN`, `ml-IN`, `mr-IN`, `pa-IN`, `ta-IN`, `te-IN`.
+- **`audio` format (the backend accepts only this):** **WAV, PCM 16-bit little-endian, 16 kHz, mono**, base64-encoded, **max 30 seconds**. On Android, record with `AudioRecord` at 16 kHz mono and prepend a 44-byte WAV header; stop recording at 30 s. Anything that isn't a WAV, or is longer than 30 s, gets a `400`.
+
+### Response
+
+The backend replies with one envelope the app switches on:
 
 ```jsonc
 {
