@@ -24,8 +24,7 @@ export async function transcribe(audio: Buffer, languageCode: LanguageCode): Pro
     } catch (err) {
       lastError = err;
       // Only transient failures are worth retrying; 4xx means our request is wrong.
-      const retryable =
-        !(err instanceof SttError) || err.status === undefined || err.status >= 500;
+      const retryable = !(err instanceof SttError) || err.status === undefined || err.status >= 500;
       if (!retryable || attempt === STT_MAX_ATTEMPTS) break;
       await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** (attempt - 1)));
     }

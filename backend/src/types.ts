@@ -8,11 +8,7 @@ export const payRequestSchema = z.object({
 
 export type PayRequest = z.infer<typeof payRequestSchema>;
 
-export type PayStatus =
-  | "confirm"
-  | "need_info"
-  | "contact_not_found"
-  | "not_understood";
+export type PayStatus = "confirm" | "need_info" | "contact_not_found" | "not_understood";
 
 export interface Payment {
   payee_name: string;
