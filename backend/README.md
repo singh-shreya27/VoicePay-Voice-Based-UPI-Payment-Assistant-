@@ -11,7 +11,7 @@ npm run dev            # http://localhost:3000
 
 ## Endpoints
 - `GET /health` — liveness check
-- `POST /pay` — audio in, `{status, speech, tts_audio, payment?}` out (currently a stub; see root README for the contract)
+- `POST /pay` — body `{audio, language_code}`, where `audio` is base64 **WAV (PCM 16-bit, 16 kHz, mono, ≤ 30 s)**. Returns `{status, speech, tts_audio, payment?}`. See the root README for the full contract.
 
 ## Layout
 ```
