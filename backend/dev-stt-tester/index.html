@@ -1,0 +1,293 @@
+<!doctype html>
+<!-- TEMP dev tool: STT recorder. Delete this folder (and its mount in app.ts) after testing. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>STT Tester</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0f1115;
+        --panel: #1a1d24;
+        --fg: #e6e8ec;
+        --muted: #9aa2af;
+        --accent: #4f8cff;
+        --danger: #ff5a5a;
+        --ok: #3ecf8e;
+        --border: #2a2f3a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        display: flex;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+      main { width: 100%; max-width: 560px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p.sub { color: var(--muted); margin: 0 0 20px; }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 16px;
+      }
+      label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+      select {
+        width: 100%;
+        padding: 9px 10px;
+        background: var(--bg);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 15px;
+      }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      button {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: var(--accent);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        padding: 10px 18px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button.rec { background: var(--danger); }
+      button.ghost { background: transparent; color: var(--fg); }
+      .status { color: var(--muted); font-size: 14px; }
+      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
+      .dot.live { background: var(--danger); animation: pulse 1s infinite; }
+      @keyframes pulse { 50% { opacity: 0.3; } }
+      audio { width: 100%; margin-top: 12px; }
+      pre {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        overflow: auto;
+        margin: 0;
+        font-size: 13px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+      .note strong { color: var(--ok); }
+      .err { color: var(--danger); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>STT Tester</h1>
+      <p class="sub">Records mic → WAV (16&nbsp;kHz, 16-bit, mono) → <code>POST /pay</code></p>
+
+      <div class="panel">
+        <label for="lang">Language</label>
+        <select id="lang">
+          <option value="en-IN">en-IN (English)</option>
+          <option value="hi-IN">hi-IN (Hindi)</option>
+          <option value="bn-IN">bn-IN (Bengali)</option>
+          <option value="gu-IN">gu-IN (Gujarati)</option>
+          <option value="kn-IN">kn-IN (Kannada)</option>
+          <option value="ml-IN">ml-IN (Malayalam)</option>
+          <option value="mr-IN">mr-IN (Marathi)</option>
+          <option value="pa-IN">pa-IN (Punjabi)</option>
+          <option value="ta-IN">ta-IN (Tamil)</option>
+          <option value="te-IN">te-IN (Telugu)</option>
+        </select>
+      </div>
+
+      <div class="panel">
+        <div class="row">
+          <button id="recBtn">● Record</button>
+          <button id="sendBtn" disabled>Send to /pay</button>
+          <span class="status"><span id="dot" class="dot"></span><span id="status">idle</span></span>
+        </div>
+        <audio id="player" controls hidden></audio>
+        <p class="note">Max 30&nbsp;seconds. The transcript is logged in your <strong>backend terminal</strong> (the <code>TEMP stt transcript:</code> line); the JSON response below only reports whether speech was heard.</p>
+      </div>
+
+      <div class="panel">
+        <label>Response</label>
+        <pre id="out">—</pre>
+      </div>
+    </main>
+
+    <script>
+      const TARGET_RATE = 16000;
+      const recBtn = document.getElementById("recBtn");
+      const sendBtn = document.getElementById("sendBtn");
+      const statusEl = document.getElementById("status");
+      const dot = document.getElementById("dot");
+      const out = document.getElementById("out");
+      const player = document.getElementById("player");
+      const langSel = document.getElementById("lang");
+
+      let audioCtx, stream, source, processor;
+      let chunks = [];
+      let recording = false;
+      let wavBlob = null;
+
+      function setStatus(text, live) {
+        statusEl.textContent = text;
+        dot.classList.toggle("live", !!live);
+      }
+
+      recBtn.addEventListener("click", async () => {
+        if (recording) return stopRecording();
+        await startRecording();
+      });
+
+      async function startRecording() {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (e) {
+          out.innerHTML = '<span class="err">Mic access denied: ' + e.message + "</span>";
+          return;
+        }
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioCtx.createMediaStreamSource(stream);
+        // ScriptProcessor is deprecated but needs no worklet file — fine for a throwaway tool.
+        processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        chunks = [];
+        processor.onaudioprocess = (e) => {
+          chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+        };
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
+
+        recording = true;
+        wavBlob = null;
+        sendBtn.disabled = true;
+        player.hidden = true;
+        recBtn.textContent = "■ Stop";
+        recBtn.classList.add("rec");
+        setStatus("recording…", true);
+
+        // Safety stop at 30s.
+        startRecording._timer = setTimeout(() => recording && stopRecording(), 30000);
+      }
+
+      function stopRecording() {
+        clearTimeout(startRecording._timer);
+        recording = false;
+        recBtn.textContent = "● Record";
+        recBtn.classList.remove("rec");
+
+        processor.disconnect();
+        source.disconnect();
+        stream.getTracks().forEach((t) => t.stop());
+
+        const inputRate = audioCtx.sampleRate;
+        audioCtx.close();
+
+        const merged = mergeChunks(chunks);
+        const down = downsample(merged, inputRate, TARGET_RATE);
+        wavBlob = encodeWav(down, TARGET_RATE);
+
+        player.src = URL.createObjectURL(wavBlob);
+        player.hidden = false;
+        sendBtn.disabled = false;
+        const secs = (down.length / TARGET_RATE).toFixed(1);
+        setStatus(`recorded ${secs}s (${(wavBlob.size / 1024).toFixed(0)} KB)`, false);
+      }
+
+      function mergeChunks(list) {
+        const len = list.reduce((n, c) => n + c.length, 0);
+        const result = new Float32Array(len);
+        let offset = 0;
+        for (const c of list) {
+          result.set(c, offset);
+          offset += c.length;
+        }
+        return result;
+      }
+
+      function downsample(buffer, inRate, outRate) {
+        if (outRate === inRate) return buffer;
+        const ratio = inRate / outRate;
+        const newLen = Math.round(buffer.length / ratio);
+        const result = new Float32Array(newLen);
+        let pos = 0;
+        for (let i = 0; i < newLen; i++) {
+          const next = Math.round((i + 1) * ratio);
+          let sum = 0,
+            count = 0;
+          for (let j = Math.round(i * ratio); j < next && j < buffer.length; j++) {
+            sum += buffer[j];
+            count++;
+          }
+          result[i] = count ? sum / count : 0;
+          pos = next;
+        }
+        return result;
+      }
+
+      function encodeWav(samples, rate) {
+        const buffer = new ArrayBuffer(44 + samples.length * 2);
+        const view = new DataView(buffer);
+        const writeStr = (off, s) => {
+          for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+        };
+        writeStr(0, "RIFF");
+        view.setUint32(4, 36 + samples.length * 2, true);
+        writeStr(8, "WAVE");
+        writeStr(12, "fmt ");
+        view.setUint32(16, 16, true); // PCM chunk size
+        view.setUint16(20, 1, true); // PCM format
+        view.setUint16(22, 1, true); // mono
+        view.setUint32(24, rate, true);
+        view.setUint32(28, rate * 2, true); // byte rate
+        view.setUint16(32, 2, true); // block align
+        view.setUint16(34, 16, true); // bits per sample
+        writeStr(36, "data");
+        view.setUint32(40, samples.length * 2, true);
+        let off = 44;
+        for (let i = 0; i < samples.length; i++, off += 2) {
+          const s = Math.max(-1, Math.min(1, samples[i]));
+          view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+        }
+        return new Blob([view], { type: "audio/wav" });
+      }
+
+      function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      sendBtn.addEventListener("click", async () => {
+        if (!wavBlob) return;
+        sendBtn.disabled = true;
+        setStatus("sending…", true);
+        out.textContent = "…";
+        try {
+          const audio = await blobToBase64(wavBlob);
+          const res = await fetch("/pay", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ audio, language_code: langSel.value }),
+          });
+          const json = await res.json().catch(() => null);
+          out.textContent = `HTTP ${res.status}\n\n` + JSON.stringify(json, null, 2);
+          setStatus(res.ok ? "done — check backend terminal for transcript" : "error", false);
+        } catch (e) {
+          out.innerHTML = '<span class="err">Request failed: ' + e.message + "</span>";
+          setStatus("error", false);
+        } finally {
+          sendBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
