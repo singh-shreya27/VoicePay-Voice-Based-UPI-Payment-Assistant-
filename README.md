@@ -77,6 +77,8 @@ cp .env.example .env     # then fill in your API keys
 PORT=3000
 STT_URL=https://api.vachana.ai/stt/v3
 STT_API_KEY=
+LLM_URL=https://your-endpoint.endpoints.huggingface.cloud/v1/chat/completions
+LLM_MODEL=gnani/gnani-evon-v3.3-30B-A3B
 LLM_API_KEY=
 TTS_API_KEY=
 ```
@@ -108,22 +110,20 @@ The backend replies with one envelope the app switches on:
   "speech": "text that was spoken",
   "tts_audio": "<base64 audio of `speech`>",
   "payment": {               // present only when status = confirm
-    "payee_name": "Ramesh",
-    "vpa": "ramesh@okaxis",
-    "amount": 500,
-    "upi_uri": "upi://pay?pa=ramesh@okaxis&pn=Ramesh&am=500&cu=INR"
+    "payee_name": "Ramesh",  // parsed from speech, romanized
+    "amount": 500            // whole rupees
   }
 }
 ```
 
 | status              | meaning                                  | app shows                         |
 |---------------------|------------------------------------------|-----------------------------------|
-| `confirm`           | understood, contact found, ready to pay  | confirmation screen → fire intent |
+| `confirm`           | name + amount parsed from speech         | resolve contact → confirmation    |
 | `need_info`         | payment understood, a field is missing   | listening again (asks for it)     |
-| `contact_not_found` | name parsed but not in contacts          | prompt to add the contact         |
+| `contact_not_found` | name not in contacts (**app-emitted**)   | prompt to add the contact         |
 | `not_understood`    | STT/LLM couldn't parse the request       | error state, retry                |
 
-> **Open decision (settle before building A6/B7):** does name → UPI-ID resolution run **on the app** (contacts stay on device; backend returns only `{payee, amount}`) or **on the backend** (app sends names)? App-side resolution keeps UPI IDs off the server and is the current lean.
+> **Settled:** name → UPI-ID resolution runs **on the app** (contacts stay on the device). The backend returns only the parsed `{payee_name, amount}`; the app resolves the contact, builds the `upi://` link, and is the only side that emits `contact_not_found`.
 
 ---
 
