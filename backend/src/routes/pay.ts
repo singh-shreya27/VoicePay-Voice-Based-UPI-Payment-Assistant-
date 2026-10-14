@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { MAX_AUDIO_BYTES } from "../constants.js";
+import { extractPayment } from "../services/llm.js";
 import { transcribe } from "../services/stt.js";
 import { payRequestSchema, type PayResponse } from "../types.js";
 
@@ -38,17 +39,51 @@ payRouter.post("/", async (req, res) => {
 
   try {
     const transcript = await transcribe(audio, parsed.data.language_code);
-    console.log("TEMP stt transcript:", transcript); // TEMP: remove after STT testing
-    const body: PayResponse = {
-      status: "not_understood",
-      speech: transcript
-        ? "Sorry, I could not understand that."
-        : "I could not hear anything. Please try again.",
-      tts_audio: "",
-    };
-    res.json(body);
+    console.log("TEMP stt transcript:", transcript); // TEMP
+    if (!transcript) {
+      res.json({
+        status: "not_understood",
+        speech: "I could not hear anything. Please try again.",
+        tts_audio: "",
+      } satisfies PayResponse);
+      return;
+    }
+
+    const { payee, amount } = await extractPayment(transcript);
+    res.json(buildResponse(payee, amount));
   } catch (err) {
     console.error("pay failed:", err instanceof Error ? err.message : err);
-    res.status(502).json({ error: "Speech recognition failed" });
+    res.status(502).json({ error: "Could not process the request" });
   }
 });
+
+/** Map the parsed {payee, amount} onto the envelope the app switches on. */
+function buildResponse(payee: string | null, amount: number | null): PayResponse {
+  if (payee && amount !== null) {
+    return {
+      status: "confirm",
+      speech: `Pay ₹${amount} to ${payee}. Say yes to confirm.`,
+      tts_audio: "",
+      payment: { payee_name: payee, amount },
+    };
+  }
+  if (payee) {
+    return {
+      status: "need_info",
+      speech: `How much do you want to send to ${payee}?`,
+      tts_audio: "",
+    };
+  }
+  if (amount !== null) {
+    return {
+      status: "need_info",
+      speech: `Who do you want to pay ₹${amount} to?`,
+      tts_audio: "",
+    };
+  }
+  return {
+    status: "not_understood",
+    speech: "Sorry, I could not understand that.",
+    tts_audio: "",
+  };
+}

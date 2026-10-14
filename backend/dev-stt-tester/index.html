@@ -17,19 +17,34 @@
         --ok: #3ecf8e;
         --border: #2a2f3a;
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
-        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font:
+          15px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
         background: var(--bg);
         color: var(--fg);
         display: flex;
         justify-content: center;
         padding: 24px 16px;
       }
-      main { width: 100%; max-width: 560px; }
-      h1 { font-size: 20px; margin: 0 0 4px; }
-      p.sub { color: var(--muted); margin: 0 0 20px; }
+      main {
+        width: 100%;
+        max-width: 560px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 4px;
+      }
+      p.sub {
+        color: var(--muted);
+        margin: 0 0 20px;
+      }
       .panel {
         background: var(--panel);
         border: 1px solid var(--border);
@@ -37,7 +52,12 @@
         padding: 18px;
         margin-bottom: 16px;
       }
-      label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+      label {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
       select {
         width: 100%;
         padding: 9px 10px;
@@ -47,7 +67,12 @@
         border-radius: 8px;
         font-size: 15px;
       }
-      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
       button {
         appearance: none;
         border: 1px solid var(--border);
@@ -59,14 +84,43 @@
         border-radius: 8px;
         cursor: pointer;
       }
-      button:disabled { opacity: 0.45; cursor: not-allowed; }
-      button.rec { background: var(--danger); }
-      button.ghost { background: transparent; color: var(--fg); }
-      .status { color: var(--muted); font-size: 14px; }
-      .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
-      .dot.live { background: var(--danger); animation: pulse 1s infinite; }
-      @keyframes pulse { 50% { opacity: 0.3; } }
-      audio { width: 100%; margin-top: 12px; }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      button.rec {
+        background: var(--danger);
+      }
+      button.ghost {
+        background: transparent;
+        color: var(--fg);
+      }
+      .status {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--muted);
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+      .dot.live {
+        background: var(--danger);
+        animation: pulse 1s infinite;
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.3;
+        }
+      }
+      audio {
+        width: 100%;
+        margin-top: 12px;
+      }
       pre {
         background: var(--bg);
         border: 1px solid var(--border);
@@ -78,9 +132,17 @@
         white-space: pre-wrap;
         word-break: break-word;
       }
-      .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
-      .note strong { color: var(--ok); }
-      .err { color: var(--danger); }
+      .note {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      .note strong {
+        color: var(--ok);
+      }
+      .err {
+        color: var(--danger);
+      }
     </style>
   </head>
   <body>
@@ -108,10 +170,16 @@
         <div class="row">
           <button id="recBtn">● Record</button>
           <button id="sendBtn" disabled>Send to /pay</button>
-          <span class="status"><span id="dot" class="dot"></span><span id="status">idle</span></span>
+          <span class="status"
+            ><span id="dot" class="dot"></span><span id="status">idle</span></span
+          >
         </div>
         <audio id="player" controls hidden></audio>
-        <p class="note">Max 30&nbsp;seconds. The transcript is logged in your <strong>backend terminal</strong> (the <code>TEMP stt transcript:</code> line); the JSON response below only reports whether speech was heard.</p>
+        <p class="note">
+          Max 30&nbsp;seconds. The transcript is logged in your
+          <strong>backend terminal</strong> (the <code>TEMP stt transcript:</code> line); the JSON
+          response below only reports whether speech was heard.
+        </p>
       </div>
 
       <div class="panel">
