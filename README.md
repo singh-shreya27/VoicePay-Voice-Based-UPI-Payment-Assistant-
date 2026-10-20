@@ -77,9 +77,12 @@ cp .env.example .env     # then fill in your API keys
 PORT=3000
 STT_URL=https://api.vachana.ai/stt/v3
 STT_API_KEY=
-LLM_URL=https://your-endpoint.endpoints.huggingface.cloud/v1/chat/completions
-LLM_MODEL=gnani/gnani-evon-v3.3-30B-A3B
+LLM_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+LLM_MODEL=gemini-3.5-flash-lite
 LLM_API_KEY=
+TTS_URL=https://api.vachana.ai/api/v1/tts/inference
+TTS_MODEL=timbre-v3.0
+TTS_VOICE=Shivani
 TTS_API_KEY=
 ```
 **Never commit `.env`.** It is git-ignored.
@@ -107,8 +110,8 @@ The backend replies with one envelope the app switches on:
 ```jsonc
 {
   "status": "confirm | need_info | contact_not_found | not_understood",
-  "speech": "text that was spoken",
-  "tts_audio": "<base64 audio of `speech`>",
+  "speech": "reply text, in the request's language",
+  "tts_audio": "<base64 MP3 of `speech`, or \"\" if TTS failed>",
   "payment": {               // present only when status = confirm
     "payee_name": "Ramesh",  // parsed from speech, romanized
     "amount": 500            // whole rupees
@@ -122,6 +125,9 @@ The backend replies with one envelope the app switches on:
 | `need_info`         | payment understood, a field is missing   | listening again (asks for it)     |
 | `contact_not_found` | name not in contacts (**app-emitted**)   | prompt to add the contact         |
 | `not_understood`    | STT/LLM couldn't parse the request       | error state, retry                |
+
+- **`speech` / `tts_audio`:** the reply is in the user's `language_code`. `tts_audio` is base64 **MP3 (mono, 24 kHz)**; play it, and show `speech` as text. If TTS fails the backend still answers with `tts_audio: ""` — just show `speech`.
+- **`contact_not_found` has no backend audio** (the app emits it), so the app needs its own prompt for it — a bundled clip per language, or Android `TextToSpeech`.
 
 > **Settled:** name → UPI-ID resolution runs **on the app** (contacts stay on the device). The backend returns only the parsed `{payee_name, amount}`; the app resolves the contact, builds the `upi://` link, and is the only side that emits `contact_not_found`.
 

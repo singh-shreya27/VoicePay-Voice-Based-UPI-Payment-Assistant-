@@ -1,7 +1,9 @@
 import { Router } from "express";
-import { MAX_AUDIO_BYTES } from "../constants.js";
+import { MAX_AUDIO_BYTES, type LanguageCode } from "../constants.js";
+import { replies } from "../replies.js";
 import { extractPayment } from "../services/llm.js";
 import { transcribe } from "../services/stt.js";
+import { synthesize } from "../services/tts.js";
 import { payRequestSchema, type PayResponse } from "../types.js";
 
 export const payRouter = Router();
@@ -37,20 +39,21 @@ payRouter.post("/", async (req, res) => {
     return;
   }
 
+  const lang = parsed.data.language_code;
   try {
-    const transcript = await transcribe(audio, parsed.data.language_code);
-    console.log("TEMP stt transcript:", transcript); // TEMP
+    const transcript = await transcribe(audio, lang);
     if (!transcript) {
-      res.json({
-        status: "not_understood",
-        speech: "I could not hear anything. Please try again.",
-        tts_audio: "",
-      } satisfies PayResponse);
+      res.json(
+        await withSpeech(
+          { status: "not_understood", speech: replies[lang].notHeard, tts_audio: "" },
+          lang,
+        ),
+      );
       return;
     }
 
     const { payee, amount } = await extractPayment(transcript);
-    res.json(buildResponse(payee, amount));
+    res.json(await withSpeech(buildResponse(payee, amount, lang), lang));
   } catch (err) {
     console.error("pay failed:", err instanceof Error ? err.message : err);
     res.status(502).json({ error: "Could not process the request" });
@@ -58,32 +61,38 @@ payRouter.post("/", async (req, res) => {
 });
 
 /** Map the parsed {payee, amount} onto the envelope the app switches on. */
-function buildResponse(payee: string | null, amount: number | null): PayResponse {
+function buildResponse(
+  payee: string | null,
+  amount: number | null,
+  lang: LanguageCode,
+): PayResponse {
+  const r = replies[lang];
   if (payee && amount !== null) {
     return {
       status: "confirm",
-      speech: `Pay ₹${amount} to ${payee}. Say yes to confirm.`,
+      speech: r.confirm(payee, amount),
       tts_audio: "",
       payment: { payee_name: payee, amount },
     };
   }
   if (payee) {
-    return {
-      status: "need_info",
-      speech: `How much do you want to send to ${payee}?`,
-      tts_audio: "",
-    };
+    return { status: "need_info", speech: r.askAmount(payee), tts_audio: "" };
   }
   if (amount !== null) {
-    return {
-      status: "need_info",
-      speech: `Who do you want to pay ₹${amount} to?`,
-      tts_audio: "",
-    };
+    return { status: "need_info", speech: r.askPayee(amount), tts_audio: "" };
   }
-  return {
-    status: "not_understood",
-    speech: "Sorry, I could not understand that.",
-    tts_audio: "",
-  };
+  return { status: "not_understood", speech: r.notUnderstood, tts_audio: "" };
+}
+
+/**
+ * Voice `speech` into `tts_audio`. A TTS failure leaves it "" rather than failing the request:
+ * the parse result is still useful, and the app falls back to showing `speech` as text.
+ */
+async function withSpeech(response: PayResponse, lang: LanguageCode): Promise<PayResponse> {
+  try {
+    return { ...response, tts_audio: await synthesize(response.speech, lang) };
+  } catch (err) {
+    console.error("tts failed:", err instanceof Error ? err.message : err);
+    return response;
+  }
 }
