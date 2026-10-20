@@ -24,7 +24,7 @@ Code style is enforced by [Prettier](https://prettier.io) (config in `.prettierr
 ## Endpoints
 
 - `GET /health` — liveness check
-- `POST /pay` — body `{audio, language_code}`, where `audio` is base64 **WAV (PCM 16-bit, 16 kHz, mono, ≤ 30 s)**. Returns `{status, speech, tts_audio, payment?}`. See the root README for the full contract.
+- `POST /pay` — body `{audio, language_code}`, where `audio` is base64 **WAV (PCM 16-bit, 16 kHz, mono, ≤ 30 s)**. Returns `{status, speech, tts_audio, payment?}` — `speech` is in the request's language and `tts_audio` is base64 MP3 of it (`""` if TTS failed) — where `payment` (on `confirm`) is `{payee_name, amount}` only — the app resolves the contact and builds the UPI link. See the root README for the full contract.
 
 ## Layout
 
@@ -36,5 +36,5 @@ src/
 ├── constants.ts     # supported languages, limits
 ├── types.ts         # /pay contract types
 ├── routes/pay.ts    # POST /pay
-└── services/        # stt, llm, tts, upi
+└── services/        # stt, llm, tts
 ```
