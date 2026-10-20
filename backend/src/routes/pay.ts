@@ -24,12 +24,8 @@ payRouter.post("/", async (req, res) => {
     return;
   }
 
+  // Invalid base64 decodes to garbage or nothing, which the WAV check rejects.
   const audio = Buffer.from(parsed.data.audio, "base64");
-  if (audio.length === 0) {
-    res.status(400).json({ error: "audio is not valid base64" });
-    return;
-  }
-
   if (!isWav(audio)) {
     res.status(400).json({ error: "audio must be a WAV file (PCM 16-bit, 16 kHz, mono)" });
     return;

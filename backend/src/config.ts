@@ -5,9 +5,7 @@ const schema = z.object({
   PORT: z.coerce.number().default(3000),
   STT_URL: z.string().url().default("https://api.vachana.ai/stt/v3"),
   STT_API_KEY: z.string().default(""),
-  // Using Gemini's OpenAI-compatible endpoint for now (free tier). The call in
-  // services/llm.ts is unchanged OpenAI chat-completions, so reverting means pointing
-  // LLM_URL/LLM_MODEL back at the self-hosted endpoint.
+  // Gemini via its OpenAI-compatible chat-completions endpoint.
   LLM_URL: z
     .string()
     .url()

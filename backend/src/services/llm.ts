@@ -7,16 +7,7 @@ import {
   MAX_AMOUNT,
   MIN_AMOUNT,
 } from "../constants.js";
-
-export class LlmError extends Error {
-  constructor(
-    message: string,
-    readonly status?: number,
-  ) {
-    super(message);
-    this.name = "LlmError";
-  }
-}
+import { UpstreamError, withRetry } from "./upstream.js";
 
 export interface ExtractedPayment {
   payee: string | null;
@@ -63,23 +54,9 @@ const parsedSchema = z.object({
 /** Extract {payee, amount} from a transcript. */
 export async function extractPayment(transcript: string): Promise<ExtractedPayment> {
   if (!config.LLM_API_KEY) {
-    throw new LlmError("LLM_API_KEY is not set");
+    throw new UpstreamError("LLM_API_KEY is not set");
   }
-
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= LLM_MAX_ATTEMPTS; attempt++) {
-    try {
-      return await callLlm(transcript);
-    } catch (err) {
-      lastError = err;
-      // Only transient failures are worth retrying; 4xx means our request is wrong, and a
-      // parse failure (undefined-status LlmError we throw ourselves) would just repeat.
-      const retryable = err instanceof LlmError && err.status !== undefined && err.status >= 500;
-      if (!retryable || attempt === LLM_MAX_ATTEMPTS) break;
-      await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** (attempt - 1)));
-    }
-  }
-  throw lastError;
+  return withRetry(() => callLlm(transcript), LLM_MAX_ATTEMPTS);
 }
 
 async function callLlm(transcript: string): Promise<ExtractedPayment> {
@@ -103,40 +80,31 @@ async function callLlm(transcript: string): Promise<ExtractedPayment> {
   });
 
   const body = (await res.json().catch(() => null)) as {
-    choices?: { message?: { content?: string; reasoning_content?: string } }[];
+    choices?: { message?: { content?: string } }[];
     error?: { message?: string } | string;
   } | null;
 
   if (!res.ok) {
     const detail =
       typeof body?.error === "string" ? body.error : (body?.error?.message ?? res.statusText);
-    throw new LlmError(`LLM request failed (${res.status}) ${detail}`, res.status);
+    throw new UpstreamError(`LLM request failed (${res.status}) ${detail}`, res.status);
   }
 
-  const message = body?.choices?.[0]?.message;
-  // A nano_v3-parsed endpoint puts clean JSON in `content` and the trace in `reasoning_content`;
-  // an unparsed one may inline a <think> block. Prefer content, fall back to the trace.
-  const raw = message?.content?.trim() || message?.reasoning_content?.trim() || "";
-  // TEMP (tester-app): log what the LLM actually returned. Set LLM_DEBUG=1 to enable.
-  if (process.env.LLM_DEBUG) {
-    console.log("[llm] raw response:", JSON.stringify(body));
-  }
-  return parseExtraction(raw);
+  return parseExtraction(body?.choices?.[0]?.message?.content?.trim() ?? "");
 }
 
 function parseExtraction(raw: string): ExtractedPayment {
-  // Drop any reasoning block, then take the last {...} so a stray leading token can't fool us.
-  const withoutThink = raw.replace(/<think>[\s\S]*?<\/think>/g, "");
-  const match = withoutThink.match(/\{[\s\S]*\}/);
+  // Take the outermost {...} so a stray code fence or leading token can't fool us.
+  const match = raw.match(/\{[\s\S]*\}/);
   if (!match) {
-    throw new LlmError(`LLM returned no JSON object: ${raw.slice(0, 200)}`);
+    throw new UpstreamError(`LLM returned no JSON object: ${raw.slice(0, 200)}`);
   }
 
   let parsed: z.infer<typeof parsedSchema>;
   try {
     parsed = parsedSchema.parse(JSON.parse(match[0]));
   } catch {
-    throw new LlmError(`LLM returned unparseable JSON: ${match[0].slice(0, 200)}`);
+    throw new UpstreamError(`LLM returned unparseable JSON: ${match[0].slice(0, 200)}`);
   }
 
   const payee = parsed.payee?.trim() ? parsed.payee.trim() : null;

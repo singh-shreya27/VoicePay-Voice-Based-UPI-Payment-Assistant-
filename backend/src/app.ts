@@ -14,9 +14,6 @@ app.get("/health", (_req, res) => {
 
 app.use("/pay", payRouter);
 
-// TEMP dev tool: STT recorder UI. Remove this line and the dev-stt-tester/ folder after testing.
-app.use("/tester", express.static("dev-stt-tester"));
-
 // Must be registered last and take four arguments: that is how Express recognises an
 // error handler. It keeps every error response JSON and hides stack traces from clients.
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {

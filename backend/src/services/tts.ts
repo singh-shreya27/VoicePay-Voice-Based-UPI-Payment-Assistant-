@@ -1,39 +1,13 @@
 import { config } from "../config.js";
 import { TTS_MAX_ATTEMPTS, TTS_SPEED, TTS_TIMEOUT_MS, type LanguageCode } from "../constants.js";
-
-export class TtsError extends Error {
-  constructor(
-    message: string,
-    readonly status?: number,
-  ) {
-    super(message);
-    this.name = "TtsError";
-  }
-}
+import { UpstreamError, withRetry } from "./upstream.js";
 
 /** Text-to-speech: reply text in, base64 MP3 out. */
 export async function synthesize(text: string, languageCode: LanguageCode): Promise<string> {
   if (!config.TTS_API_KEY) {
-    throw new TtsError("TTS_API_KEY is not set");
+    throw new UpstreamError("TTS_API_KEY is not set");
   }
-
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= TTS_MAX_ATTEMPTS; attempt++) {
-    try {
-      return await callTts(text, languageCode, config.TTS_API_KEY);
-    } catch (err) {
-      lastError = err;
-      // Retry network errors, rate limits and 5xx; other 4xx means our request is wrong.
-      const retryable =
-        !(err instanceof TtsError) ||
-        err.status === undefined ||
-        err.status === 429 ||
-        err.status >= 500;
-      if (!retryable || attempt === TTS_MAX_ATTEMPTS) break;
-      await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** (attempt - 1)));
-    }
-  }
-  throw lastError;
+  return withRetry(() => callTts(text, languageCode, config.TTS_API_KEY), TTS_MAX_ATTEMPTS);
 }
 
 async function callTts(text: string, languageCode: LanguageCode, apiKey: string): Promise<string> {
@@ -59,12 +33,12 @@ async function callTts(text: string, languageCode: LanguageCode, apiKey: string)
       error?: { type?: string; message?: string };
     } | null;
     const detail = body?.error ? `${body.error.type}: ${body.error.message}` : res.statusText;
-    throw new TtsError(`TTS request failed (${res.status}) ${detail}`, res.status);
+    throw new UpstreamError(`TTS request failed (${res.status}) ${detail}`, res.status);
   }
 
   const audio = Buffer.from(await res.arrayBuffer());
   if (audio.length === 0) {
-    throw new TtsError("TTS returned empty audio");
+    throw new UpstreamError("TTS returned empty audio");
   }
   return audio.toString("base64");
 }

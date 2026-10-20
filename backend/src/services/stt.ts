@@ -1,35 +1,13 @@
 import { config } from "../config.js";
 import { STT_MAX_ATTEMPTS, STT_TIMEOUT_MS, type LanguageCode } from "../constants.js";
-
-export class SttError extends Error {
-  constructor(
-    message: string,
-    readonly status?: number,
-  ) {
-    super(message);
-    this.name = "SttError";
-  }
-}
+import { UpstreamError, withRetry } from "./upstream.js";
 
 /** Speech-to-text: audio bytes in, transcript out. */
 export async function transcribe(audio: Buffer, languageCode: LanguageCode): Promise<string> {
   if (!config.STT_API_KEY) {
-    throw new SttError("STT_API_KEY is not set");
+    throw new UpstreamError("STT_API_KEY is not set");
   }
-
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= STT_MAX_ATTEMPTS; attempt++) {
-    try {
-      return await callStt(audio, languageCode, config.STT_API_KEY);
-    } catch (err) {
-      lastError = err;
-      // Only transient failures are worth retrying; 4xx means our request is wrong.
-      const retryable = !(err instanceof SttError) || err.status === undefined || err.status >= 500;
-      if (!retryable || attempt === STT_MAX_ATTEMPTS) break;
-      await new Promise((resolve) => setTimeout(resolve, 300 * 2 ** (attempt - 1)));
-    }
-  }
-  throw lastError;
+  return withRetry(() => callStt(audio, languageCode, config.STT_API_KEY), STT_MAX_ATTEMPTS);
 }
 
 async function callStt(audio: Buffer, languageCode: LanguageCode, apiKey: string): Promise<string> {
@@ -55,7 +33,7 @@ async function callStt(audio: Buffer, languageCode: LanguageCode, apiKey: string
 
   if (!res.ok || !body?.success) {
     const detail = body?.error ? `${body.error.type}: ${body.error.message}` : res.statusText;
-    throw new SttError(`STT request failed (${res.status}) ${detail}`, res.status);
+    throw new UpstreamError(`STT request failed (${res.status}) ${detail}`, res.status);
   }
 
   return (body.transcript ?? "").trim();

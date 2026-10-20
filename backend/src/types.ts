@@ -6,8 +6,6 @@ export const payRequestSchema = z.object({
   language_code: z.enum(SUPPORTED_LANGUAGES),
 });
 
-export type PayRequest = z.infer<typeof payRequestSchema>;
-
 // `contact_not_found` is emitted by the app after its own name -> UPI-ID lookup; the backend
 // never returns it, since contacts live on the device.
 export type PayStatus = "confirm" | "need_info" | "contact_not_found" | "not_understood";
