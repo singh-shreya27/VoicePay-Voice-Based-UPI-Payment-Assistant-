@@ -16,7 +16,7 @@ A prototype Android app that lets users make UPI payments by voice — aimed at 
   |                              |── reply ──► TTS ──► audio ──────|
   |  ◄──── {status, speech, ──── |                               |
   |         tts_audio, payment}  |                               |
-  |  confirm screen → fire UPI intent → UPI app → user enters PIN |
+  |  confirm → copy UPI ID, open UPI app → user pays, enters PIN |
 ```
 
 **Pipeline:** audio → **STT** (speech-to-text) → **LLM** extracts `{payee, amount}` → reply text → **TTS** (text-to-speech) → audio played to the user.
@@ -33,7 +33,7 @@ A prototype Android app that lets users make UPI payments by voice — aimed at 
 - **Add contact is a manual typed screen,** not a voice action — dictating a UPI ID by voice is unreliable.
 - **Confirmation is mandatory** before firing a payment: the app reads back "Pay ₹X to Y" and requires a Confirm tap.
 - **Contacts (name → UPI ID) are stored locally on the device** (Room database), seeded with demo contacts. They are not held on the server.
-- **Payment is via UPI deep-link intent** (`upi://pay?pa=&pn=&am=&cu=INR`) launched with `startActivityForResult`. The user completes the PIN in their own UPI app. Result status comes back via the activity result (not fully reliable — acceptable for the prototype).
+- **Payment happens inside the user's own UPI app.** UPI apps refuse `upi://pay` payment links from apps that aren't NPCI-approved UPI apps (TPAPs), so on Confirm the app copies the payee's UPI ID, opens the user's chosen UPI app, and talks them through "Pay to UPI ID → paste → amount → PIN". It then asks "Did you pay?" for the result. Pre-filled payments need TPAP approval (post-demo backlog). Details in `android-app/README.md`.
 
 ---
 
