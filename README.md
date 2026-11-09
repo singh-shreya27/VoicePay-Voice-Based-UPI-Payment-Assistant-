@@ -4,6 +4,8 @@ VoicePay is a prototype Android app that lets people start a UPI payment by spea
 
 The user says something like *"Ramu ko 500 bhej do"* ("send 500 to Ramu"). The app works out who to pay and how much, reads the payment back for confirmation, and then guides the user to pay in their own UPI app (Google Pay, PhonePe, Paytm and others), where they enter their PIN as usual.
 
+> **One-page solution pitch:** [PITCH.md](PITCH.md)
+
 > **Prototype scope.** This is a demo build, not a production payment app. VoicePay never moves money itself: the payment always happens inside the user's own UPI app. Security hardening, certification and robustness work are listed under [Known limitations](#known-limitations) and [Roadmap](#roadmap).
 
 ---
