@@ -1,0 +1,22 @@
+feat(android): add Compose frontend with /pay integration and Demo Mode
+
+Native Android app (Kotlin, Jetpack Compose, Material 3) in android-app/:
+
+- Screens: language, idle, listening, processing, need-info, confirmation,
+  waiting for UPI app, result, failure, contacts, add contact, amount entry,
+  settings. Large text and touch targets for elderly users.
+- PayViewModel owns all screen transitions.
+- /pay integration: records 16 kHz mono WAV (<= 30 s), sends it with
+  language_code, maps confirm / need_info / not_understood. Resolves
+  payee_name against on-device contacts (Room) and emits contact_not_found
+  itself, per the settled contract.
+- Plays the backend's tts_audio (MP3); falls back to on-device TTS.
+- Real payments: upi://pay intent built from the confirmed fields, opened
+  only after the user taps Confirm. Shows success only on Status=SUCCESS;
+  anything unclear is shown as "not confirmed".
+- Demo Mode (on by default): simulated replies and payment results, clearly
+  labelled; never opens a UPI app. Sample contacts use @example and are
+  refused by the real payment path.
+- Gradle 9.6 wrapper, AGP 9.4.1, Kotlin 2.2.10; 21 JVM unit tests.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

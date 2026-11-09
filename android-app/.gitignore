@@ -1,0 +1,24 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+.kotlin
+
+# Release signing key and its passwords: never commit these
+keystore.properties
+*.jks
+*.keystore
+
+# Root .gitignore ignores *.jar, but the Gradle wrapper jar must be committed
+!/gradle/wrapper/gradle-wrapper.jar

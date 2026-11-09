@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Android 13+ "themed icons" tint this single-colour version to match the wallpaper.
+         Same as the foreground minus the rupee sign, which would vanish when everything is one colour. -->
+    <!-- Microphone head (a capsule) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M46,40a8,8 0,0 1,16 0v10a8,8 0,0 1,-16 0z" />
+    <!-- Mic holder, stem and base -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M40,50a14,14 0,0 0,28 0M54,64V71M47,71H61" />
+    <!-- Sound waves, inner pair -->
+    <path
+        android:strokeColor="#B3FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M35,38q-4,7 0,14M73,38q4,7 0,14" />
+    <!-- Sound waves, outer pair -->
+    <path
+        android:strokeColor="#73FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M29,34q-6,11 0,22M79,34q6,11 0,22" />
+</vector>

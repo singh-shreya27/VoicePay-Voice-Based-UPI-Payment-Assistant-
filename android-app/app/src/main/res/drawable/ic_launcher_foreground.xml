@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- App icon foreground: a microphone with a rupee sign, sending out sound waves.
+         Everything stays inside the 66dp "safe zone" circle so no launcher crops it. -->
+    <!-- Microphone head (a capsule) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M46,40a8,8 0,0 1,16 0v10a8,8 0,0 1,-16 0z" />
+    <!-- Mic holder, stem and base -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M40,50a14,14 0,0 0,28 0M54,64V71M47,71H61" />
+    <!-- Sound waves, inner pair -->
+    <path
+        android:strokeColor="#B3FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M35,38q-4,7 0,14M73,38q4,7 0,14" />
+    <!-- Sound waves, outer pair -->
+    <path
+        android:strokeColor="#73FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M29,34q-6,11 0,22M79,34q6,11 0,22" />
+    <!-- Rupee sign on the mic head, in the background's indigo -->
+    <path
+        android:strokeColor="#FF4F46E5"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M50.5,38H57.5M50.5,41.5H57.5M50.5,38H52.5a3.5,3.5 0,0 1,0 7H50.5L56.5,52" />
+</vector>
