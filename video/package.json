@@ -1,0 +1,25 @@
+{
+  "name": "voicepay-explainer-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "60-second animated product explainer for VoicePay, built with Remotion",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render VoicePayExplainer out/voicepay-explainer.mp4",
+    "render:no-subtitles": "remotion render VoicePayExplainer out/voicepay-explainer-clean.mp4 --props={\\\"showSubtitles\\\":false}",
+    "still": "remotion still VoicePayExplainer out/poster.png --frame=1720",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.538",
+    "@remotion/google-fonts": "4.0.538",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.538"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "typescript": "5.9.3"
+  }
+}
