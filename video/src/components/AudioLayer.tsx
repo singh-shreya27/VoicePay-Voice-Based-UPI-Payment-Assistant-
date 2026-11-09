@@ -26,7 +26,7 @@ export const AudioLayer: React.FC = () => {
           ...CUES.map((c) =>
             Math.min(
               interpolate(f, [c.from - 10, c.from], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
-              interpolate(f, [c.to, c.to + 10], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
+              interpolate(f, [c.to, c.to + 20], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
             ),
           ),
         )

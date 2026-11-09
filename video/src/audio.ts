@@ -53,11 +53,14 @@ export const VOICEOVER: VoiceoverConfig = {
   ],
 };
 
+// The track is 116 s (only the first 60 s are used) and ≈ −17.6 dBFS, about
+// 5.5 dB louder than the voiceover (≈ −23 dBFS). These gains put it ≈ 15 dB
+// under the voice between lines and ≈ 18 dB under while a line is spoken.
 export const MUSIC: MusicConfig = {
-  file: null, // e.g. 'audio/music.mp3'
-  volume: 0.35,
-  duckedVolume: 0.12,
+  file: 'audio/leberch-sad-piano-628076.mp3',
+  volume: 0.2, //        ≈ −14 dB
+  duckedVolume: 0.08, // ≈ −22 dB
   fadeInFrames: 30,
   fadeOutFrames: 60,
-  loop: true,
+  loop: false,
 };
